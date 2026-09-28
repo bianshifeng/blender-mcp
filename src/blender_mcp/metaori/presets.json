@@ -1,0 +1,26 @@
+{
+  "schema": "metaori.presets/1",
+  "purposes": {
+    "reference": {
+      "description": "Reference picture for image-to-3D: one centred object on a plain white background, 3/4 view.",
+      "positive_suffix": "single object, centered, entire object visible, three-quarter front view, plain pure white background, soft even studio lighting, no cast shadows, sharp focus, high detail",
+      "negative": "multiple objects, cropped, cut off, cluttered background, scenery, text, watermark, logo, harsh shadows, motion blur, blurry, low quality",
+      "width": 1024,
+      "height": 1024
+    },
+    "texture": {
+      "description": "Surface texture: flat, evenly lit, top-down. Seamless tiling is requested but not guaranteed by the current workflow.",
+      "positive_suffix": "seamless tileable texture, flat top-down orthographic view, uniform diffuse lighting, no shadows, no perspective, no objects, evenly distributed surface detail, high detail",
+      "negative": "perspective, vanishing point, objects, shadows, vignette, border, frame, text, watermark, logo, blurry, low quality",
+      "width": 1024,
+      "height": 1024
+    },
+    "raw": {
+      "description": "Prompt used as written; size and negative prompt come from the workflow.",
+      "positive_suffix": "",
+      "negative": "",
+      "width": null,
+      "height": null
+    }
+  }
+}
