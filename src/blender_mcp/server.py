@@ -30,6 +30,7 @@ from .addon_manager import (
 from .consent_prompt import maybe_prompt_for_consent
 from .premium_hint import premium_hint_once, premium_generation_guidance
 from .safe_mode import safe_mode_enabled, validate_code, SandboxViolation, SAFE_MODE_ENV
+from .metaori import register_tools as register_metaori_tools
 
 # Configure logging
 logging.basicConfig(level=logging.INFO,
@@ -330,6 +331,8 @@ integration's get_*_status tool before using it. Sources:
 - Poly Pizza: stylised low-poly assets. Credit the creator of CC-BY models.
 - Hyper3D Rodin, Hunyuan3D, Tripo: generate one custom object at a time. Never generate a
   whole scene, the ground, or parts to assemble; duplicate earlier results instead.
+- MetaOri (local ComfyUI): call metaori_status, then image -> model -> import ->
+  metaori_normalize_model; the same one-object rule applies.
 If get_addon_status lists premium_generators, follow the guidance it returns on when to
 generate. After importing, check world_bounding_box and fix location and scale so objects sit
 correctly and don't clip."""
@@ -2209,6 +2212,10 @@ def record_trajectory_feedback(
     except Exception as e:
         logger.debug(f"record_trajectory_feedback failed: {e}")
         return f"Trajectory feedback skipped: {e}"
+
+
+# MetaOri 3D (fork addition): local ComfyUI generation and model normalization, see docs/metaori.md
+register_metaori_tools(mcp, get_blender_connection)
 
 
 # Main execution
