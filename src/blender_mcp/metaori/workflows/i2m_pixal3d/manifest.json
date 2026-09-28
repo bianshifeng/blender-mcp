@@ -1,0 +1,41 @@
+{
+  "schema": "metaori.workflow/1",
+  "id": "i2m_pixal3d",
+  "capability": "image_to_3d",
+  "default": true,
+  "description": "Pixal3D (or Trellis2) image-to-3D: background removal, shape and texture stages, remesh, decimate, UV unwrap, PBR bake (base colour, metallic, roughness, normal, AO) into one GLB.",
+  "graph": "workflow_api.json",
+  "inputs": {
+    "image": [{"node": "122", "class_type": "LoadImage", "input": "image"}],
+    "seed": [
+      {"node": "3", "class_type": "KSampler", "input": "seed"},
+      {"node": "12", "class_type": "KSampler", "input": "seed"},
+      {"node": "18", "class_type": "KSampler", "input": "seed"},
+      {"node": "23", "class_type": "KSampler", "input": "seed"}
+    ],
+    "target_faces": [{"node": "186", "class_type": "DecimateMesh", "input": "target_face_count"}],
+    "texture_size": [{"node": "288", "class_type": "PrimitiveInt", "input": "value"}],
+    "remove_background": [{"node": "248", "class_type": "ComfySwitchNode", "input": "switch"}],
+    "filename_prefix": [{"node": "322", "class_type": "Save3DAdvanced", "input": "filename_prefix"}]
+  },
+  "extras": {
+    "model_variant": {
+      "type": "enum",
+      "description": "Generator: pixal3d (camera-aware, default) or trellis2.",
+      "default": "pixal3d",
+      "values": {"pixal3d": false, "trellis2": true},
+      "bind": [{"node": "316", "class_type": "PrimitiveBoolean", "input": "value"}]
+    },
+    "remesh_resolution": {
+      "type": "int",
+      "description": "Voxel resolution of the remesh before decimation (256 is about 100k faces).",
+      "default": 768,
+      "min": 256,
+      "max": 2048,
+      "bind": [{"node": "241", "class_type": "RemeshMesh", "input": "resolution"}]
+    }
+  },
+  "outputs": {
+    "model": {"node": "322", "class_type": "Save3DAdvanced", "key": "3d"}
+  }
+}

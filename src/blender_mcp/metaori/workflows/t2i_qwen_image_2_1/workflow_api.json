@@ -1,0 +1,149 @@
+{
+  "13": {
+    "inputs": {
+      "aspect_ratio": "4:3 (Standard)",
+      "megapixels": 1.5,
+      "multiple": 8
+    },
+    "class_type": "ResolutionSelector",
+    "_meta": {
+      "title": "input:Resolution Selector"
+    }
+  },
+  "452": {
+    "inputs": {
+      "prompt": [
+        "502",
+        0
+      ],
+      "negative_prompt": "extra people, duplicated limbs, incorrect pose, text, watermark, heavy stylization, excessive background elements, dramatic lighting, smoke, rain, particles, lens flarezzzz",
+      "resolution": 1024,
+      "clip": [
+        "453",
+        0
+      ]
+    },
+    "class_type": "TextEncodeQwenImage21",
+    "_meta": {
+      "title": "Text Encode Qwen Image 2.1"
+    }
+  },
+  "453": {
+    "inputs": {
+      "clip_name": "qwen3vl_8b_bf16.safetensors",
+      "type": "qwen_image",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP"
+    }
+  },
+  "454": {
+    "inputs": {
+      "vae_name": "qwen_image_2.1_vae_bf16.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "456": {
+    "inputs": {
+      "width": [
+        "13",
+        0
+      ],
+      "height": [
+        "13",
+        1
+      ],
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "Empty Latent Image"
+    }
+  },
+  "457": {
+    "inputs": {
+      "samples": [
+        "458",
+        0
+      ],
+      "vae": [
+        "454",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "458": {
+    "inputs": {
+      "seed": 77202025735267,
+      "steps": 25,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": [
+        "503",
+        0
+      ],
+      "positive": [
+        "452",
+        0
+      ],
+      "negative": [
+        "452",
+        1
+      ],
+      "latent_image": [
+        "456",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "461": {
+    "inputs": {
+      "filename_prefix": "Qwen_image_2.1_GGUF",
+      "format": "png",
+      "format.bit_depth": "8-bit",
+      "format.input_color_space": "sRGB",
+      "images": [
+        "457",
+        0
+      ]
+    },
+    "class_type": "SaveImageAdvanced",
+    "_meta": {
+      "title": "output:Save Image"
+    }
+  },
+  "502": {
+    "inputs": {
+      "prompt": "动物ip，可爱风，3D风格，OC渲染，正面视角，泡泡玛特玩偶风格，治愈系ip，乙烯基玩偶，先锋艺术，干净背景，blender渲染，穿毛茸茸棕色熊外套的玩偶IP，低头害羞的表情，软嘟嘟的治愈感，现代高级摆件，盲盒质感，3D 建模风格，简约背景"
+    },
+    "class_type": "CR Prompt Text",
+    "_meta": {
+      "title": "input: Prompt Text"
+    }
+  },
+  "503": {
+    "inputs": {
+      "unet_name": "qwen_image_2.1_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  }
+}

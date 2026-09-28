@@ -1,0 +1,30 @@
+{
+  "schema": "metaori.workflow/1",
+  "id": "t2i_qwen_image_2_1",
+  "capability": "text_to_image",
+  "default": true,
+  "description": "Qwen Image 2.1 (int8) text-to-image, euler/simple, cfg 1. Chinese and English prompts both work.",
+  "graph": "workflow_api.json",
+  "inputs": {
+    "prompt": [{"node": "502", "class_type": "CR Prompt Text", "input": "prompt"}],
+    "negative_prompt": [{"node": "452", "class_type": "TextEncodeQwenImage21", "input": "negative_prompt"}],
+    "width": [{"node": "456", "class_type": "EmptyLatentImage", "input": "width"}],
+    "height": [{"node": "456", "class_type": "EmptyLatentImage", "input": "height"}],
+    "count": [{"node": "456", "class_type": "EmptyLatentImage", "input": "batch_size"}],
+    "seed": [{"node": "458", "class_type": "KSampler", "input": "seed"}],
+    "filename_prefix": [{"node": "461", "class_type": "SaveImageAdvanced", "input": "filename_prefix"}]
+  },
+  "extras": {
+    "steps": {
+      "type": "int",
+      "description": "Sampling steps; more is slower and rarely better above 30.",
+      "default": 25,
+      "min": 1,
+      "max": 100,
+      "bind": [{"node": "458", "class_type": "KSampler", "input": "steps"}]
+    }
+  },
+  "outputs": {
+    "images": {"node": "461", "class_type": "SaveImageAdvanced", "key": "images"}
+  }
+}
