@@ -42,6 +42,12 @@ Blender 插件无需改动或重装：MetaOri 只通过插件已有的 `execute_
 4. `metaori_import_model(job_id=...)`，用 `get_viewport_screenshot` 判断朝向。
 5. `metaori_normalize_model(object_name=<导入的根对象>, asset_name="BronzeCenser", target_size_m=0.35, rotate_deg=[0, 0, 0], target_tris=50000)`。
 
+## 注意事项（2026-09-28 端到端验证）
+
+- **截图前保持实体（Solid）着色**：Blender 5.1 中视口处于材质预览或渲染（EEVEE）模式时，`get_viewport_screenshot` 的离屏绘制会让 Blender 崩溃（`EXCEPTION_ACCESS_VIOLATION`，位于 `eevee::ShadowTileMap::sync_orthographic`）。要看贴图，用 Solid + `shading.color_type = "TEXTURE"`。
+- **朝向**：Pixal3D 生成的模型导入后正面朝 -Y（与参考图视角一致），一般不需要 `rotate_deg`。
+- **耗时**（RTX 4090）：文生图预热后约 11 秒；图生模型首次运行约 580 秒（含模型加载与显存换入）；导入与规范化（8 万面降到 3 万面）约 2 秒。
+
 ## 任务目录
 
 ```

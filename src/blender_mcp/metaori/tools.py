@@ -124,7 +124,10 @@ def register_tools(mcp: Any, get_blender_connection: Callable[[], Any],
         name renames the imported root object when there is exactly one. Returns the created
         objects, the root and mesh object names, their combined world bounding box in metres, the
         triangle count, materials and texture images. Check the facing with get_viewport_screenshot
-        before metaori_normalize_model.
+        before metaori_normalize_model (Pixal3D models arrive with their front facing -Y, so they
+        usually need no rotate_deg). Keep the viewport in Solid shading for screenshots
+        (shading.color_type = "TEXTURE" shows the albedo): on Blender 5.1 get_viewport_screenshot
+        crashes Blender when the viewport is in Material Preview or Rendered (EEVEE) mode.
         """
         if bool(job_id) == bool(file_path):
             raise ParamError("pass exactly one of job_id or file_path")
