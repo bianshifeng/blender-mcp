@@ -220,7 +220,7 @@ def test_status_reports_comfyui_workflows_and_missing_node_classes(tmp_path):
     assert workflows["t2i_qwen_image_2_1"]["available"] is False
     assert workflows["i2m_pixal3d"]["available"] is True
     assert status["output_dir"] == str(tmp_path / "out")
-    assert set(status["purposes"]) == {"reference", "texture", "raw"}
+    assert set(status["purposes"]) == {"reference", "texture", "concept", "raw"}
 
 
 def test_status_still_lists_workflows_when_comfyui_is_down(tmp_path):

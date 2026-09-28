@@ -55,12 +55,20 @@ def test_bad_asset_names_are_rejected(name):
         validate_asset_name(name)
 
 
-def test_presets_ship_reference_texture_and_raw():
+def test_presets_ship_reference_texture_concept_and_raw():
     presets = load_presets()
-    assert set(presets) == {"reference", "texture", "raw"}
+    assert set(presets) == {"reference", "texture", "concept", "raw"}
     assert presets["reference"].width == 1024 and presets["reference"].height == 1024
     assert "white background" in presets["reference"].positive_suffix
     assert presets["raw"].positive_suffix == "" and presets["raw"].width is None
+
+
+def test_concept_preset_is_a_wide_eye_level_scene_without_people():
+    concept = load_presets()["concept"]
+    assert (concept.width, concept.height) == (1664, 928)
+    assert concept.width % 8 == 0 and concept.height % 8 == 0
+    assert "eye height" in concept.positive_suffix
+    assert "people" in concept.negative and "text" in concept.negative
 
 
 def test_compose_prompt_appends_the_preset_and_merges_negatives():

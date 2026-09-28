@@ -27,7 +27,7 @@ Blender 插件无需改动或重装：MetaOri 只通过插件已有的 `execute_
 | 工具 | 作用 |
 |---|---|
 | `metaori_status` | ComfyUI 状态、工作流与参数、输出目录 |
-| `metaori_generate_image` | 功能 1：文生图（`purpose`：reference / texture / raw） |
+| `metaori_generate_image` | 功能 1：文生图（`purpose`：reference / texture / concept / raw；concept 为 1664×928 人眼高度场景概念图，供 scene-kickoff 立项用，`asset_name` 填 Mod 名） |
 | `metaori_generate_model` | 功能 2：图生模型（`image_job_id` 或 `image_path`） |
 | `metaori_get_job` | 查询或等待任务；完成时输出已下载到任务目录 |
 | `metaori_cancel_job` | 取消排队或运行中的任务 |

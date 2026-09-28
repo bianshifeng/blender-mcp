@@ -52,14 +52,19 @@ def register_tools(mcp: Any, get_blender_connection: Callable[[], Any],
                                      params: dict[str, Any] | None = None, wait_seconds: float = 0) -> str:
         """MetaOri function 1: text-to-image on the local ComfyUI (reference pictures or textures).
 
-        - prompt: what to draw, Chinese or English; describe one object (shape, material, style).
-        - asset_name: PascalCase asset name such as BronzeCenser or WoodCrate_A. Outputs go to
-          <output_dir>/<asset_name>/<time>_t2i_<job>/ with job.json (prompt, seed, params, workflow).
+        - prompt: what to draw, Chinese or English; describe one object (shape, material, style), or
+          the whole space for purpose "concept".
+        - asset_name: PascalCase asset name such as BronzeCenser or WoodCrate_A (for concept art the
+          scene Mod id, e.g. Mod_GhostVillage). Outputs go to <output_dir>/<asset_name>/<time>_t2i_<job>/
+          with job.json (prompt, seed, params, workflow).
         - purpose: "reference" (default) adds a single-object, white-background, 3/4-view template so
           the picture works for metaori_generate_model; "texture" asks for a flat, evenly lit,
-          top-down surface (seamless tiling is not guaranteed); "raw" sends the prompt unchanged.
+          top-down surface (seamless tiling is not guaranteed); "concept" asks for a wide scene view
+          from human eye height, 1664x928, no people or text (scene-kickoff concept art); "raw" sends
+          the prompt unchanged.
         - negative_prompt: extra things to avoid, added to the purpose's negative prompt.
-        - width, height: multiples of 8 in 256-2048 (default 1024x1024). count: 1-4 images.
+        - width, height: multiples of 8 in 256-2048 (default from the purpose, usually 1024x1024).
+          count: 1-4 images.
         - seed: omit for a random one (recorded). workflow: a workflow id from metaori_status.
           params: that workflow's extras, e.g. {"steps": 30}.
         - wait_seconds: wait up to this long (max 600) for the result; 0 returns at once.

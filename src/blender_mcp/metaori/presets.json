@@ -15,6 +15,13 @@
       "width": 1024,
       "height": 1024
     },
+    "concept": {
+      "description": "Scene concept art for planning a VR level (scene-kickoff skill): a wide view from human eye height with a readable layout, scale cues and lighting; no people or text.",
+      "positive_suffix": "environment concept art, wide establishing view from human eye height of about 1.6 m, level camera, clear spatial layout with foreground midground and background, readable scale cues such as doors steps and railings, coherent perspective, realistic materials and lighting, no people, no text",
+      "negative": "people, characters, crowd, text, watermark, logo, signature, frame, border, fisheye, extreme wide-angle distortion, tilted horizon, impossible architecture, blurry, low quality, cartoon",
+      "width": 1664,
+      "height": 928
+    },
     "raw": {
       "description": "Prompt used as written; size and negative prompt come from the workflow.",
       "positive_suffix": "",
