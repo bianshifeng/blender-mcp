@@ -37,8 +37,9 @@ def _write_pack(root: Path, manifest: dict, graph: dict = GRAPH, folder: str | N
 def test_shipped_packs_load_as_the_defaults():
     registry = WorkflowRegistry.load()
     assert registry.errors == {}
-    assert set(registry.packs) == {"t2i_qwen_image_2_1", "i2m_pixal3d"}
+    assert set(registry.packs) == {"t2i_qwen_image_2_1", "t2i_qwen_image_2_1_ref", "i2m_pixal3d"}
     assert registry.get("text_to_image").id == "t2i_qwen_image_2_1"
+    assert registry.get("text_to_image", needs=("reference_images",)).id == "t2i_qwen_image_2_1_ref"
     assert registry.get("image_to_3d").id == "i2m_pixal3d"
 
 
@@ -163,3 +164,74 @@ def test_registry_get_explains_missing_or_mismatched_workflows(tmp_path):
         registry.get("image_to_3d", "t2i_test")
     with pytest.raises(WorkflowError, match="not available"):
         registry.get("text_to_image", "nope")
+
+
+REF_PACK = "t2i_qwen_image_2_1_ref"
+REF_LOADERS = ("105", "106", "107", "108", "109", "110")
+
+
+def test_reference_pack_fills_used_slots_and_drops_the_rest():
+    pack = WorkflowRegistry.load().packs[REF_PACK]
+    assert pack.slot_count("reference_images") == 6
+    graph = pack.bind({"prompt": "crate", "seed": 3, "width": 768, "height": 512,
+                       "reference_images": ["metaori/a.png", "metaori/b.png"]},
+                      {"lora_1": "Qwen-Image2.1/style/x.safetensors", "lora_1_strength": 0.8})
+    encoder = graph["5"]["inputs"]
+    assert graph["105"]["inputs"]["image"] == "metaori/a.png" and graph["106"]["inputs"]["image"] == "metaori/b.png"
+    assert encoder["images.image_1"] == ["105", 0] and encoder["images.image_2"] == ["106", 0]
+    assert not any(f"images.image_{i}" in encoder for i in range(3, 7))
+    assert not set(REF_LOADERS[2:]) & set(graph) and "200" not in graph and "201" not in graph
+    assert (graph["100"]["inputs"]["value"], graph["102"]["inputs"]["value"]) == ("crate", 3)
+    assert (graph["103"]["inputs"]["value"], graph["104"]["inputs"]["value"]) == (768, 512)
+    assert graph["9001"]["inputs"]["strength_model"] == 0.8
+    assert "images.image_6" in pack.graph["5"]["inputs"]
+
+
+def test_reference_pack_without_references_is_plain_text_to_image():
+    graph = WorkflowRegistry.load().packs[REF_PACK].bind({"prompt": "crate"})
+    assert not any(key.startswith("images.") for key in graph["5"]["inputs"])
+    assert not set(REF_LOADERS) & set(graph)
+    assert {"1", "2", "3", "4", "5", "6", "7", "8", "9", "100", "101", "102", "103", "104"} <= set(graph)
+
+
+def test_reference_pack_rejects_more_references_than_slots():
+    pack = WorkflowRegistry.load().packs[REF_PACK]
+    with pytest.raises(WorkflowError, match="at most 6"):
+        pack.bind({"prompt": "x", "reference_images": [f"metaori/{i}.png" for i in range(7)]})
+
+
+def test_describe_lists_slots():
+    registry = WorkflowRegistry.load()
+    assert registry.packs[REF_PACK].describe()["slots"] == {"reference_images": 6}
+    assert registry.get("text_to_image").describe()["slots"] == {}
+
+
+def test_registry_get_checks_needed_inputs():
+    registry = WorkflowRegistry.load()
+    with pytest.raises(WorkflowError, match="does not support"):
+        registry.get("text_to_image", "t2i_qwen_image_2_1", needs=("reference_images",))
+
+
+SLOT_GRAPH = {
+    **GRAPH,
+    "4": {"class_type": "LoadImage", "inputs": {"image": "example.png"}},
+    "5": {"class_type": "Encode", "inputs": {"image_1": ["4", 0], "strength": 1}},
+}
+
+
+def _slot(set_input="image", detach_input="image_1"):
+    return {"set": {"node": "4", "class_type": "LoadImage", "input": set_input},
+            "detach": [{"node": "5", "class_type": "Encode", "input": detach_input}]}
+
+
+@pytest.mark.parametrize("slots, message", [
+    ([], "non-empty list of slots"),
+    ([{"set": _slot()["set"]}], "needs set"),
+    ([_slot(set_input="file")], "has no input"),
+    ([_slot(detach_input="strength")], "is not a link"),
+])
+def test_invalid_slot_bindings_are_rejected(tmp_path, slots, message):
+    inputs = {"prompt": [{"node": "1", "class_type": "CR Prompt Text", "input": "prompt"}], "reference_images": slots}
+    directory = _write_pack(tmp_path, _manifest(inputs=inputs), graph=SLOT_GRAPH)
+    with pytest.raises(WorkflowError, match=message):
+        load_pack(directory)

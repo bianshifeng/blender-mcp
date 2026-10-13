@@ -40,7 +40,7 @@ def test_image_to_3d_checks_texture_size_and_flags():
 
 
 def test_internal_inputs_are_marked():
-    assert TEXT_TO_IMAGE.internal_inputs == ("filename_prefix",)
+    assert TEXT_TO_IMAGE.internal_inputs == ("reference_images", "filename_prefix")
     assert IMAGE_TO_3D.internal_inputs == ("image", "filename_prefix")
 
 
@@ -87,3 +87,12 @@ def test_raw_preset_keeps_the_prompt_and_the_workflow_negative():
 def test_empty_prompt_is_rejected():
     with pytest.raises(ParamError, match="empty"):
         compose_prompt(load_presets()["raw"], "   ")
+
+
+def test_reference_images_are_a_bounded_list_of_strings():
+    spec = TEXT_TO_IMAGE.inputs["reference_images"]
+    assert spec.is_slots and spec.validate(("a.png", "b.png")) == ["a.png", "b.png"]
+    for bad, message in (("a.png", "list of strings"), ([1], "list of strings"),
+                         (["x"] * 17, "at most 16"), (["x" * 501], "longer than 500")):
+        with pytest.raises(ParamError, match=message):
+            spec.validate(bad)

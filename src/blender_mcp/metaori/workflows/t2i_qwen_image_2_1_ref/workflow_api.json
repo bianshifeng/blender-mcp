@@ -1,0 +1,341 @@
+{
+  "1": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "qwen_image_2.1_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    },
+    "_meta": {
+      "title": "扩散模型"
+    }
+  },
+  "2": {
+    "class_type": "QwenImage21Cache",
+    "inputs": {
+      "model": [
+        "9003",
+        0
+      ],
+      "device": "auto",
+      "dtype": "default"
+    }
+  },
+  "3": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen3vl_8b_int8_convrot.safetensors",
+      "type": "qwen_image",
+      "device": "default"
+    },
+    "_meta": {
+      "title": "文本编码器"
+    }
+  },
+  "4": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "qwen_image_2.1_vae_bf16.safetensors"
+    },
+    "_meta": {
+      "title": "VAE"
+    }
+  },
+  "5": {
+    "class_type": "TextEncodeQwenImage21",
+    "inputs": {
+      "clip": [
+        "3",
+        0
+      ],
+      "prompt": [
+        "100",
+        0
+      ],
+      "negative_prompt": [
+        "101",
+        0
+      ],
+      "resolution": 1024,
+      "vae": [
+        "4",
+        0
+      ],
+      "images.image_1": [
+        "105",
+        0
+      ],
+      "images.image_2": [
+        "106",
+        0
+      ],
+      "images.image_3": [
+        "107",
+        0
+      ],
+      "images.image_4": [
+        "108",
+        0
+      ],
+      "images.image_5": [
+        "109",
+        0
+      ],
+      "images.image_6": [
+        "110",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "提示词与参考图"
+    }
+  },
+  "6": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "width": [
+        "103",
+        0
+      ],
+      "height": [
+        "104",
+        0
+      ],
+      "batch_size": 1
+    }
+  },
+  "7": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "2",
+        0
+      ],
+      "positive": [
+        "5",
+        0
+      ],
+      "negative": [
+        "5",
+        1
+      ],
+      "latent_image": [
+        "6",
+        0
+      ],
+      "seed": [
+        "102",
+        0
+      ],
+      "steps": 25,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1
+    }
+  },
+  "8": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "7",
+        0
+      ],
+      "vae": [
+        "4",
+        0
+      ]
+    }
+  },
+  "9": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "8",
+        0
+      ],
+      "filename_prefix": "aigc_webapp/image"
+    },
+    "_meta": {
+      "title": "OUT:image | 输出图片"
+    }
+  },
+  "100": {
+    "class_type": "PrimitiveStringMultiline",
+    "inputs": {
+      "value": ""
+    },
+    "_meta": {
+      "title": "IN:prompt | 提示词"
+    }
+  },
+  "101": {
+    "class_type": "PrimitiveStringMultiline",
+    "inputs": {
+      "value": ""
+    },
+    "_meta": {
+      "title": "IN:negative | 反向提示词"
+    }
+  },
+  "102": {
+    "class_type": "PrimitiveInt",
+    "inputs": {
+      "value": 0
+    },
+    "_meta": {
+      "title": "IN:seed | 随机种子"
+    }
+  },
+  "103": {
+    "class_type": "PrimitiveInt",
+    "inputs": {
+      "value": 1024
+    },
+    "_meta": {
+      "title": "IN:width | 宽"
+    }
+  },
+  "104": {
+    "class_type": "PrimitiveInt",
+    "inputs": {
+      "value": 1024
+    },
+    "_meta": {
+      "title": "IN:height | 高"
+    }
+  },
+  "105": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "example.png"
+    },
+    "_meta": {
+      "title": "IN:image_1 | 参考图1"
+    }
+  },
+  "106": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "example.png"
+    },
+    "_meta": {
+      "title": "IN:image_2 | 参考图2"
+    }
+  },
+  "107": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "example.png"
+    },
+    "_meta": {
+      "title": "IN:image_3 | 参考图3"
+    }
+  },
+  "108": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "example.png"
+    },
+    "_meta": {
+      "title": "IN:image_4 | 参考图4"
+    }
+  },
+  "109": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "example.png"
+    },
+    "_meta": {
+      "title": "IN:image_5 | 参考图5"
+    }
+  },
+  "110": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "example.png"
+    },
+    "_meta": {
+      "title": "IN:image_6 | 参考图6"
+    }
+  },
+  "200": {
+    "class_type": "ImageScale",
+    "inputs": {
+      "image": [
+        "105",
+        0
+      ],
+      "upscale_method": "lanczos",
+      "width": [
+        "103",
+        0
+      ],
+      "height": [
+        "104",
+        0
+      ],
+      "crop": "center"
+    },
+    "_meta": {
+      "title": "精修：参考图缩放到输出尺寸"
+    }
+  },
+  "201": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": [
+        "200",
+        0
+      ],
+      "vae": [
+        "4",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "精修：参考图编码"
+    }
+  },
+  "9001": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "lora_name": "Qwen-Image2.1\\style\\mvc5000_qwen21.safetensors",
+      "strength_model": 0,
+      "model": [
+        "1",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "IN:lora_1 | LoRA 1（强度 0 = 空槽）"
+    }
+  },
+  "9002": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "lora_name": "Qwen-Image2.1\\style\\mvc5000_qwen21.safetensors",
+      "strength_model": 0,
+      "model": [
+        "9001",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "IN:lora_2 | LoRA 2"
+    }
+  },
+  "9003": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "lora_name": "Qwen-Image2.1\\style\\mvc5000_qwen21.safetensors",
+      "strength_model": 0,
+      "model": [
+        "9002",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "IN:lora_3 | LoRA 3"
+    }
+  }
+}

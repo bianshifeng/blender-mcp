@@ -48,8 +48,9 @@ def register_tools(mcp: Any, get_blender_connection: Callable[[], Any],
     async def metaori_generate_image(prompt: str, asset_name: str, purpose: str = "reference",
                                      negative_prompt: str | None = None, width: int | None = None,
                                      height: int | None = None, seed: int | None = None,
-                                     count: int | None = None, workflow: str | None = None,
-                                     params: dict[str, Any] | None = None, wait_seconds: float = 0) -> str:
+                                     count: int | None = None, reference_images: list[str] | None = None,
+                                     workflow: str | None = None, params: dict[str, Any] | None = None,
+                                     wait_seconds: float = 0) -> str:
         """MetaOri function 1: text-to-image on the local ComfyUI (reference pictures or textures).
 
         - prompt: what to draw, Chinese or English; describe one object (shape, material, style), or
@@ -65,8 +66,12 @@ def register_tools(mcp: Any, get_blender_connection: Callable[[], Any],
         - negative_prompt: extra things to avoid, added to the purpose's negative prompt.
         - width, height: multiples of 8 in 256-2048 (default from the purpose, usually 1024x1024).
           count: 1-4 images.
+        - reference_images: local .png/.jpg/.jpeg/.webp files (up to 6 in t2i_qwen_image_2_1_ref) the
+          model sees next to the prompt; say in the prompt how to use them ("the bronze texture of
+          image 1", "the shape of image 2"). Giving them picks a workflow that supports references.
         - seed: omit for a random one (recorded). workflow: a workflow id from metaori_status.
-          params: that workflow's extras, e.g. {"steps": 30}.
+          params: that workflow's extras, e.g. {"steps": 30}, or for t2i_qwen_image_2_1_ref
+          {"lora_1": "Qwen-Image2.1\\style\\x.safetensors", "lora_1_strength": 0.8}.
         - wait_seconds: wait up to this long (max 600) for the result; 0 returns at once.
 
         Returns the job record; outputs.images lists the PNG paths once status is "succeeded".
@@ -74,8 +79,8 @@ def register_tools(mcp: Any, get_blender_connection: Callable[[], Any],
         """
         return _json(await svc().generate_image(
             prompt=prompt, asset_name=asset_name, purpose=purpose, negative_prompt=negative_prompt,
-            width=width, height=height, seed=seed, count=count, workflow=workflow, params=params,
-            wait_seconds=wait_seconds))
+            width=width, height=height, seed=seed, count=count, reference_images=reference_images,
+            workflow=workflow, params=params, wait_seconds=wait_seconds))
 
     @mcp.tool()
     async def metaori_generate_model(asset_name: str | None = None, image_path: str | None = None,

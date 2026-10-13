@@ -1,0 +1,260 @@
+{
+  "schema": "metaori.workflow/1",
+  "id": "t2i_qwen_image_2_1_ref",
+  "capability": "text_to_image",
+  "default": false,
+  "description": "Qwen Image 2.1 (int8) text-to-image with up to 6 reference images (subject, style or layout guidance; the prompt says how to use them) and 3 optional LoRA slots. euler/simple, cfg 1. Picked automatically when reference_images are given.",
+  "graph": "workflow_api.json",
+  "inputs": {
+    "prompt": [
+      {
+        "node": "100",
+        "class_type": "PrimitiveStringMultiline",
+        "input": "value"
+      }
+    ],
+    "negative_prompt": [
+      {
+        "node": "101",
+        "class_type": "PrimitiveStringMultiline",
+        "input": "value"
+      }
+    ],
+    "width": [
+      {
+        "node": "103",
+        "class_type": "PrimitiveInt",
+        "input": "value"
+      }
+    ],
+    "height": [
+      {
+        "node": "104",
+        "class_type": "PrimitiveInt",
+        "input": "value"
+      }
+    ],
+    "count": [
+      {
+        "node": "6",
+        "class_type": "EmptyLatentImage",
+        "input": "batch_size"
+      }
+    ],
+    "seed": [
+      {
+        "node": "102",
+        "class_type": "PrimitiveInt",
+        "input": "value"
+      }
+    ],
+    "filename_prefix": [
+      {
+        "node": "9",
+        "class_type": "SaveImage",
+        "input": "filename_prefix"
+      }
+    ],
+    "reference_images": [
+      {
+        "set": {
+          "node": "105",
+          "class_type": "LoadImage",
+          "input": "image"
+        },
+        "detach": [
+          {
+            "node": "5",
+            "class_type": "TextEncodeQwenImage21",
+            "input": "images.image_1"
+          }
+        ]
+      },
+      {
+        "set": {
+          "node": "106",
+          "class_type": "LoadImage",
+          "input": "image"
+        },
+        "detach": [
+          {
+            "node": "5",
+            "class_type": "TextEncodeQwenImage21",
+            "input": "images.image_2"
+          }
+        ]
+      },
+      {
+        "set": {
+          "node": "107",
+          "class_type": "LoadImage",
+          "input": "image"
+        },
+        "detach": [
+          {
+            "node": "5",
+            "class_type": "TextEncodeQwenImage21",
+            "input": "images.image_3"
+          }
+        ]
+      },
+      {
+        "set": {
+          "node": "108",
+          "class_type": "LoadImage",
+          "input": "image"
+        },
+        "detach": [
+          {
+            "node": "5",
+            "class_type": "TextEncodeQwenImage21",
+            "input": "images.image_4"
+          }
+        ]
+      },
+      {
+        "set": {
+          "node": "109",
+          "class_type": "LoadImage",
+          "input": "image"
+        },
+        "detach": [
+          {
+            "node": "5",
+            "class_type": "TextEncodeQwenImage21",
+            "input": "images.image_5"
+          }
+        ]
+      },
+      {
+        "set": {
+          "node": "110",
+          "class_type": "LoadImage",
+          "input": "image"
+        },
+        "detach": [
+          {
+            "node": "5",
+            "class_type": "TextEncodeQwenImage21",
+            "input": "images.image_6"
+          }
+        ]
+      }
+    ]
+  },
+  "extras": {
+    "steps": {
+      "type": "int",
+      "description": "Sampling steps; more is slower and rarely better above 30.",
+      "default": 25,
+      "min": 1,
+      "max": 100,
+      "bind": [
+        {
+          "node": "7",
+          "class_type": "KSampler",
+          "input": "steps"
+        }
+      ]
+    },
+    "reference_resolution": {
+      "type": "int",
+      "description": "Reference images are resized to about this many pixels per side (multiple of 32); 0 keeps their own size.",
+      "default": 1024,
+      "min": 0,
+      "max": 4096,
+      "bind": [
+        {
+          "node": "5",
+          "class_type": "TextEncodeQwenImage21",
+          "input": "resolution"
+        }
+      ]
+    },
+    "lora_1": {
+      "type": "str",
+      "description": "LoRA file for slot 1, as listed by ComfyUI (e.g. Qwen-Image2.1\\style\\x.safetensors); only used when lora_1_strength is not 0.",
+      "default": "Qwen-Image2.1\\style\\mvc5000_qwen21.safetensors",
+      "bind": [
+        {
+          "node": "9001",
+          "class_type": "LoraLoaderModelOnly",
+          "input": "lora_name"
+        }
+      ]
+    },
+    "lora_1_strength": {
+      "type": "float",
+      "description": "Strength of LoRA slot 1; 0 (default) leaves the slot empty.",
+      "default": 0.0,
+      "min": -2.0,
+      "max": 2.0,
+      "bind": [
+        {
+          "node": "9001",
+          "class_type": "LoraLoaderModelOnly",
+          "input": "strength_model"
+        }
+      ]
+    },
+    "lora_2": {
+      "type": "str",
+      "description": "LoRA file for slot 2, as listed by ComfyUI (e.g. Qwen-Image2.1\\style\\x.safetensors); only used when lora_2_strength is not 0.",
+      "default": "Qwen-Image2.1\\style\\mvc5000_qwen21.safetensors",
+      "bind": [
+        {
+          "node": "9002",
+          "class_type": "LoraLoaderModelOnly",
+          "input": "lora_name"
+        }
+      ]
+    },
+    "lora_2_strength": {
+      "type": "float",
+      "description": "Strength of LoRA slot 2; 0 (default) leaves the slot empty.",
+      "default": 0.0,
+      "min": -2.0,
+      "max": 2.0,
+      "bind": [
+        {
+          "node": "9002",
+          "class_type": "LoraLoaderModelOnly",
+          "input": "strength_model"
+        }
+      ]
+    },
+    "lora_3": {
+      "type": "str",
+      "description": "LoRA file for slot 3, as listed by ComfyUI (e.g. Qwen-Image2.1\\style\\x.safetensors); only used when lora_3_strength is not 0.",
+      "default": "Qwen-Image2.1\\style\\mvc5000_qwen21.safetensors",
+      "bind": [
+        {
+          "node": "9003",
+          "class_type": "LoraLoaderModelOnly",
+          "input": "lora_name"
+        }
+      ]
+    },
+    "lora_3_strength": {
+      "type": "float",
+      "description": "Strength of LoRA slot 3; 0 (default) leaves the slot empty.",
+      "default": 0.0,
+      "min": -2.0,
+      "max": 2.0,
+      "bind": [
+        {
+          "node": "9003",
+          "class_type": "LoraLoaderModelOnly",
+          "input": "strength_model"
+        }
+      ]
+    }
+  },
+  "outputs": {
+    "images": {
+      "node": "9",
+      "class_type": "SaveImage",
+      "key": "images"
+    }
+  }
+}

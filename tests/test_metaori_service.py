@@ -153,7 +153,7 @@ def test_generate_model_chains_from_an_image_job(tmp_path):
     record = run(service.generate_model(image_job_id=image_job["job_id"], target_faces=50000, texture_size=2048))
     graph = dict(comfy.submitted)[record["job_id"]]
     assert comfy.uploads == [Path(image_job["outputs"]["images"][0])]
-    assert graph["122"]["inputs"]["image"] == "metaori/abc.png"
+    assert graph["122"]["inputs"]["image"] == "metaori/image_01.png"
     assert graph["186"]["inputs"]["target_face_count"] == 50000
     assert graph["288"]["inputs"]["value"] == 2048
     assert len({graph[n]["inputs"]["seed"] for n in ("3", "12", "18", "23")}) == 1
@@ -228,7 +228,7 @@ def test_status_still_lists_workflows_when_comfyui_is_down(tmp_path):
     comfy.reachable = False
     status = run(service.status())
     assert status["comfyui"]["reachable"] is False and "not reachable" in status["comfyui"]["error"]
-    assert {w["id"] for w in status["workflows"]} == {"t2i_qwen_image_2_1", "i2m_pixal3d"}
+    assert {w["id"] for w in status["workflows"]} == {"t2i_qwen_image_2_1", "t2i_qwen_image_2_1_ref", "i2m_pixal3d"}
     assert "available" not in status["workflows"][0]
 
 
@@ -237,3 +237,44 @@ def test_jobs_survive_a_service_restart(tmp_path):
     record, _ = _image_job(service, comfy)
     restarted, _, _ = make_service(tmp_path, comfy=comfy)
     assert run(restarted.get_job(record["job_id"]))["status"] == "queued"
+
+
+def _reference_files(tmp_path, count):
+    paths = []
+    for index in range(count):
+        path = tmp_path / f"ref{index}.png"
+        path.write_bytes(b"PNG" + bytes([index + 1]))
+        paths.append(str(path))
+    return paths
+
+
+def test_reference_images_are_uploaded_copied_and_pick_the_reference_workflow(tmp_path):
+    service, comfy, _ = make_service(tmp_path)
+    refs = _reference_files(tmp_path, 2)
+    record = run(service.generate_image(prompt="crate in the style of image 1", asset_name="Crate",
+                                        purpose="raw", reference_images=refs, params={"steps": 30}))
+    graph = dict(comfy.submitted)[record["job_id"]]
+    assert record["workflow"]["id"] == "t2i_qwen_image_2_1_ref"
+    assert comfy.uploads == [Path(p) for p in refs]
+    assert record["params"]["reference_images"] == ["metaori/ref0.png", "metaori/ref1.png"]
+    assert graph["105"]["inputs"]["image"] == "metaori/ref0.png" and "107" not in graph
+    assert graph["7"]["inputs"]["steps"] == 30
+    assert graph["9"]["inputs"]["filename_prefix"] == f"metaori/Crate/t2i_{record['job_id'][:8]}"
+    folder = Path(record["folder"])
+    assert (folder / "reference_02.png").read_bytes() == b"PNG" + bytes([2])
+    assert [s["copied_as"] for s in record["source"]["reference_images"]] == ["reference_01.png", "reference_02.png"]
+
+
+@pytest.mark.parametrize("kwargs, error, message", [
+    ({"reference_images": "one.png"}, ParamError, "list of strings"),
+    ({"reference_images": ["missing.png"]}, ParamError, "not found"),
+    ({"workflow": "t2i_qwen_image_2_1"}, WorkflowError, "does not support"),
+    ({"params": {"lora_1_strength": 5}}, ParamError, "<= 2.0"),
+    ({"count_refs": 7}, ParamError, "at most 6"),
+])
+def test_bad_reference_requests_fail_before_upload(tmp_path, kwargs, error, message):
+    service, comfy, _ = make_service(tmp_path)
+    kwargs = {"reference_images": _reference_files(tmp_path, kwargs.pop("count_refs", 1)), **kwargs}
+    with pytest.raises(error, match=message):
+        run(service.generate_image(prompt="x", asset_name="Crate", **kwargs))
+    assert comfy.uploads == [] and comfy.submitted == [] and not (tmp_path / "out").exists()

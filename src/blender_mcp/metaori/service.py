@@ -119,13 +119,18 @@ class MetaOriService:
     async def generate_image(self, *, prompt: str, asset_name: str, purpose: str = "reference",
                              negative_prompt: str | None = None, width: int | None = None,
                              height: int | None = None, seed: int | None = None, count: int | None = None,
-                             workflow: str | None = None, params: dict[str, Any] | None = None,
-                             wait_seconds: float = 0) -> dict[str, Any]:
+                             reference_images: list[str] | None = None, workflow: str | None = None,
+                             params: dict[str, Any] | None = None, wait_seconds: float = 0) -> dict[str, Any]:
         asset_name = validate_asset_name(asset_name)
         preset = self.presets.get(purpose)
         if preset is None:
             raise ParamError(f"purpose must be one of {sorted(self.presets)}, got {purpose!r}")
-        pack = self.registry.get(TEXT_TO_IMAGE.name, workflow)
+        references = [self._image_file(path) for path in TEXT_TO_IMAGE.inputs["reference_images"].validate(
+            reference_images or [])]
+        pack = self.registry.get(TEXT_TO_IMAGE.name, workflow, needs=("reference_images",) if references else ())
+        if len(references) > pack.slot_count("reference_images"):
+            raise ParamError(f"workflow {pack.id} takes at most {pack.slot_count('reference_images')} "
+                             f"reference_images, got {len(references)}")
         composed = compose_prompt(preset, prompt, negative_prompt)
         job_id = new_job_id()
         explicit = {"prompt": composed.positive, "width": width, "height": height, "seed": seed, "count": count}
@@ -141,7 +146,20 @@ class MetaOriService:
             "purpose": purpose,
             "prompt": {"user": prompt, "positive": composed.positive, "negative": applied.get("negative_prompt")},
         }
-        return await self._submit(pack, job_id, asset_name, applied, skipped, params, record, wait_seconds)
+        copies: dict[str, Path] = {}
+        if references:
+            pack.convert_extras(params)  # fail on bad extras before uploading anything
+            uploaded, sources = [], []
+            for index, path in enumerate(references, start=1):
+                name = await self.client.upload_image(path)
+                copy_name = f"reference_{index:02d}{path.suffix.lower()}"
+                uploaded.append(name)
+                copies[copy_name] = path
+                sources.append({"image_path": str(path.resolve()), "uploaded_as": name, "copied_as": copy_name})
+            applied["reference_images"] = TEXT_TO_IMAGE.inputs["reference_images"].validate(uploaded)
+            record["source"] = {"reference_images": sources}
+        return await self._submit(pack, job_id, asset_name, applied, skipped, params, record, wait_seconds,
+                                  copy_inputs=copies)
 
     async def generate_model(self, *, asset_name: str | None = None, image_path: str | None = None,
                              image_job_id: str | None = None, image_index: int = 0, seed: int | None = None,
@@ -162,11 +180,8 @@ class MetaOriService:
             asset_name = asset_name or image_job.get("asset_name")
             source.update(image_job_id=image_job["job_id"], image_index=image_index)
         else:
-            path = Path(image_path).expanduser()
-        if path.suffix.lower() not in IMAGE_SUFFIXES:
-            raise ParamError(f"image must be one of {list(IMAGE_SUFFIXES)}, got {path.name}")
-        if not path.is_file():
-            raise ParamError(f"image not found: {path}")
+            path = Path(image_path)
+        path = self._image_file(path)
         asset_name = validate_asset_name(asset_name)
         pack = self.registry.get(IMAGE_TO_3D.name, workflow)
         job_id = new_job_id()
@@ -182,6 +197,15 @@ class MetaOriService:
         record = {"capability": pack.capability.name, "source": source}
         return await self._submit(pack, job_id, asset_name, applied, skipped, params, record, wait_seconds,
                                   copy_inputs={copy_name: path})
+
+    @staticmethod
+    def _image_file(path: str | Path) -> Path:
+        path = Path(path).expanduser()
+        if path.suffix.lower() not in IMAGE_SUFFIXES:
+            raise ParamError(f"image must be one of {list(IMAGE_SUFFIXES)}, got {path.name}")
+        if not path.is_file():
+            raise ParamError(f"image not found: {path}")
+        return path
 
     @staticmethod
     def _prefix(asset_name: str, pack: WorkflowPack, job_id: str) -> str:

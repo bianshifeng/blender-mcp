@@ -27,7 +27,7 @@ Blender 插件无需改动或重装：MetaOri 只通过插件已有的 `execute_
 | 工具 | 作用 |
 |---|---|
 | `metaori_status` | ComfyUI 状态、工作流与参数、输出目录 |
-| `metaori_generate_image` | 功能 1：文生图（`purpose`：reference / texture / concept / raw；concept 为 1664×928 人眼高度场景概念图，供 scene-kickoff 立项用，`asset_name` 填 Mod 名） |
+| `metaori_generate_image` | 功能 1：文生图（`purpose`：reference / texture / concept / raw；concept 为 1664×928 人眼高度场景概念图，供 scene-kickoff 立项用，`asset_name` 填 Mod 名）；可带 `reference_images`（本地图片，最多 6 张）做参考图生图 / 改图 |
 | `metaori_generate_model` | 功能 2：图生模型（`image_job_id` 或 `image_path`） |
 | `metaori_get_job` | 查询或等待任务；完成时输出已下载到任务目录 |
 | `metaori_cancel_job` | 取消排队或运行中的任务 |
@@ -48,11 +48,22 @@ Blender 插件无需改动或重装：MetaOri 只通过插件已有的 `execute_
 - **朝向**：Pixal3D 生成的模型导入后正面朝 -Y（与参考图视角一致），一般不需要 `rotate_deg`。
 - **耗时**（RTX 4090）：文生图预热后约 11 秒；图生模型首次运行约 580 秒（含模型加载与显存换入）；导入与规范化（8 万面降到 3 万面）约 2 秒。
 
+## 工作流包
+
+| id | 能力 | 说明 |
+|---|---|---|
+| `t2i_qwen_image_2_1` | text_to_image（默认） | Qwen Image 2.1 int8 文生图，extras：`steps` |
+| `t2i_qwen_image_2_1_ref` | text_to_image | 同一模型，带 6 个参考图槽和 3 个 LoRA 槽；传 `reference_images` 时自动选它。extras：`steps`、`reference_resolution`（参考图缩放边长，0 = 原尺寸）、`lora_1..3`（ComfyUI 列出的 LoRA 文件名）与 `lora_1..3_strength`（默认 0 = 空槽） |
+| `i2m_pixal3d` | image_to_3d（默认） | Pixal3D / TRELLIS.2 图生模型 |
+
+参考图的用法写在提示词里（“图 1 的大象，换成青铜锈色”“图 2 的纹样”）。2026-10-13 实测：不带参考图约 9 s，带 1 张参考图约 11 s，改材质时保留了参考图的造型与纹样。
+
 ## 任务目录
 
 ```
 <METAORI_OUTPUT_DIR>/<AssetName>/<YYYYMMDD-HHMMSS>_<t2i|i2m>_<job8>/
     image_01.png ...        文生图输出
+    reference_01.png ...    参考图生图时的参考图副本
     input.png, model.glb    图生模型的参考图副本与输出
     job.json
 ```
@@ -63,9 +74,9 @@ Blender 插件无需改动或重装：MetaOri 只通过插件已有的 `execute_
 
 1. 在 ComfyUI 中搭好工作流，用菜单 “导出（API）” 得到 API 格式 JSON。
 2. 新建 `src/blender_mcp/metaori/workflows/<id>/`（目录名即 id），放入 `workflow_api.json`。
-3. 写 `manifest.json`（参考现有两个包）：
+3. 写 `manifest.json`（参考现有的包）：
    - `capability`：`text_to_image` 或 `image_to_3d`；
-   - `inputs`：标准参数 → 目标列表 `[{"node", "class_type", "input"}]`，一个参数可以绑多个节点；
+   - `inputs`：标准参数 → 目标列表 `[{"node", "class_type", "input"}]`，一个参数可以绑多个节点；列表参数（`reference_images`）改为槽列表 `[{"set": 目标, "detach": [目标…]}]`：第 i 个值写进第 i 个槽的 `set`（通常是 LoadImage 的 `image`），没用到的槽删掉 `detach` 指向的连线（必须是连线，所在输入要是可选的），之后不再通向输出的节点会从提交的图里剔除；
    - `extras`：工作流特有参数（`type`、`default`、`min`/`max` 或枚举 `values`、`bind`），`default` 必须与图里的当前值一致；
    - `outputs`：标准输出 → `{"node", "class_type", "key"}`（图片保存节点用 `images`，3D 保存节点用 `3d`）；
    - 同一能力只能有一个 `"default": true`。
@@ -74,7 +85,7 @@ Blender 插件无需改动或重装：MetaOri 只通过插件已有的 `execute_
 
 | 能力 | 标准输入（* 必须绑定） | 标准输出 |
 |---|---|---|
-| text_to_image | prompt*、negative_prompt、width、height、seed、count、filename_prefix（内部） | images |
+| text_to_image | prompt*、negative_prompt、width、height、seed、count、reference_images（内部，槽列表）、filename_prefix（内部） | images |
 | image_to_3d | image*（内部）、seed、target_faces、texture_size、remove_background、filename_prefix（内部） | model |
 
 ## 离线运行 bpy 脚本

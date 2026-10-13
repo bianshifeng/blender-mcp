@@ -28,8 +28,22 @@ class ParamSpec:
     multiple_of: int | None = None
     choices: tuple[int, ...] | None = None
     max_length: int | None = None
+    max_items: int | None = None
+
+    @property
+    def is_slots(self) -> bool:
+        """A list input; workflows bind it to a row of slots and detach the unused ones."""
+        return self.type is list
 
     def validate(self, value: Any) -> Any:
+        if self.type is list:
+            if not isinstance(value, (list, tuple)) or not all(isinstance(item, str) for item in value):
+                raise ParamError(f"{self.name} must be a list of strings, got {value!r}")
+            if self.max_items is not None and len(value) > self.max_items:
+                raise ParamError(f"{self.name} takes at most {self.max_items} items, got {len(value)}")
+            if self.max_length is not None and any(len(item) > self.max_length for item in value):
+                raise ParamError(f"{self.name} has an item longer than {self.max_length} characters")
+            return list(value)
         if self.type is bool:
             if not isinstance(value, bool):
                 raise ParamError(f"{self.name} must be true or false, got {value!r}")
@@ -88,11 +102,14 @@ TEXT_TO_IMAGE = Capability(
         "height": ParamSpec("height", int, "Image height in pixels", min=256, max=2048, multiple_of=8),
         "seed": _seed(),
         "count": ParamSpec("count", int, "Images per job", min=1, max=4),
+        "reference_images": ParamSpec(
+            "reference_images", list, "ComfyUI input image names, set by MetaOri after upload",
+            max_length=500, max_items=16),
         "filename_prefix": _prefix(),
     },
     required_inputs=("prompt",),
     outputs=("images",),
-    internal_inputs=("filename_prefix",),
+    internal_inputs=("reference_images", "filename_prefix"),
 )
 
 IMAGE_TO_3D = Capability(

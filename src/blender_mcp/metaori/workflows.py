@@ -9,7 +9,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -77,6 +77,13 @@ class Extra:
 
 
 @dataclass(frozen=True)
+class Slot:
+    """One item of a list input: `set` receives the value; unused slots have their `detach` links removed."""
+    set: Target
+    detach: tuple[Target, ...]
+
+
+@dataclass(frozen=True)
 class Output:
     name: str
     node: str
@@ -96,9 +103,13 @@ class WorkflowPack:
     extras: dict[str, Extra]
     outputs: dict[str, Output]
     directory: Path
+    slots: dict[str, tuple[Slot, ...]] = field(default_factory=dict)
 
     def supports(self, param: str) -> bool:
-        return param in self.inputs
+        return param in self.inputs or param in self.slots
+
+    def slot_count(self, param: str) -> int:
+        return len(self.slots.get(param, ()))
 
     def convert_extras(self, extras: dict[str, Any] | None) -> dict[str, Any]:
         """Validate caller extras; returns name -> raw graph value."""
@@ -113,19 +124,34 @@ class WorkflowPack:
         """Return a copy of the graph with standard params and extras written into their targets.
 
         A target that currently holds a link ([node_id, output_index]) is replaced by the constant.
+        List inputs fill their slots in order; every slot left over (all of them when the input is
+        not given) has its detach links removed, and nodes that no longer feed an output are dropped.
         """
-        unsupported = sorted(set(params) - set(self.inputs))
+        unsupported = sorted(name for name in params if not self.supports(name))
         if unsupported:
             raise WorkflowError(
-                f"workflow {self.id} does not support {unsupported}; its inputs are {sorted(self.inputs)}")
+                f"workflow {self.id} does not support {unsupported}; "
+                f"its inputs are {sorted(self.inputs) + sorted(self.slots)}")
         raw_extras = self.convert_extras(extras)
         graph = copy.deepcopy(self.graph)
         for name, value in params.items():
-            for target in self.inputs[name]:
+            for target in self.inputs.get(name, ()):
                 graph[target.node]["inputs"][target.input] = value
+        for name, slots in self.slots.items():
+            values = list(params.get(name) or [])
+            if len(values) > len(slots):
+                raise WorkflowError(f"workflow {self.id} takes at most {len(slots)} {name}, got {len(values)}")
+            for index, slot in enumerate(slots):
+                if index < len(values):
+                    graph[slot.set.node]["inputs"][slot.set.input] = values[index]
+                else:
+                    for target in slot.detach:
+                        graph[target.node]["inputs"].pop(target.input, None)
         for name, value in raw_extras.items():
             for target in self.extras[name].targets:
                 graph[target.node]["inputs"][target.input] = value
+        if self.slots:
+            graph = _reachable(graph, [output.node for output in self.outputs.values()])
         return graph
 
     def resolve_extras(self, extras: dict[str, Any] | None) -> dict[str, Any]:
@@ -144,6 +170,7 @@ class WorkflowPack:
             "default": self.default,
             "description": self.description,
             "inputs": sorted(k for k in self.inputs if k not in self.capability.internal_inputs),
+            "slots": {name: len(slots) for name, slots in sorted(self.slots.items())},
             "extras": {name: extra.describe() for name, extra in sorted(self.extras.items())},
             "outputs": sorted(self.outputs),
         }
@@ -167,6 +194,41 @@ def _targets(raw: Any, graph: dict[str, Any], where: str) -> tuple[Target, ...]:
             raise WorkflowError(f"{where}: node {node} ({class_type}) has no input {field!r}")
         targets.append(Target(node, class_type, field))
     return tuple(targets)
+
+
+def _is_link(value: Any) -> bool:
+    return isinstance(value, list) and len(value) == 2 and isinstance(value[0], str)
+
+
+def _reachable(graph: dict[str, Any], roots: list[str]) -> dict[str, Any]:
+    """Only the nodes the roots depend on; ComfyUI would not run the rest, and unused loaders may not validate."""
+    keep: set[str] = set()
+    stack = [node for node in roots if node in graph]
+    while stack:
+        node = stack.pop()
+        if node in keep:
+            continue
+        keep.add(node)
+        stack.extend(value[0] for value in graph[node].get("inputs", {}).values()
+                     if _is_link(value) and value[0] in graph)
+    return {node: data for node, data in graph.items() if node in keep}
+
+
+def _slots(raw: Any, graph: dict[str, Any], where: str) -> tuple[Slot, ...]:
+    if not isinstance(raw, list) or not raw:
+        raise WorkflowError(f"{where}: a list input binds a non-empty list of slots")
+    slots = []
+    for index, item in enumerate(raw):
+        here = f"{where}[{index}]"
+        if not isinstance(item, dict) or "set" not in item or not item.get("detach"):
+            raise WorkflowError(f"{here}: every slot needs set (one target) and detach (a list of targets)")
+        target = _targets([item["set"]], graph, f"{here}.set")[0]
+        detach = _targets(item["detach"], graph, f"{here}.detach")
+        for link in detach:
+            if not _is_link(graph[link.node]["inputs"][link.input]):
+                raise WorkflowError(f"{here}.detach: node {link.node}.{link.input} is not a link")
+        slots.append(Slot(target, detach))
+    return tuple(slots)
 
 
 def _read_json(path: Path, what: str) -> tuple[Any, bytes]:
@@ -223,11 +285,15 @@ def load_pack(directory: Path) -> WorkflowPack:
         raise WorkflowError(f"{pack_id}: graph is not a ComfyUI API-format graph (use 'Export (API)' in ComfyUI)")
 
     inputs = {}
+    slots = {}
     for name, raw in (manifest.get("inputs") or {}).items():
         if name not in capability.inputs:
             raise WorkflowError(
                 f"{pack_id}: {name!r} is not a standard {capability.name} input; declare it under extras")
-        inputs[name] = _targets(raw, graph, f"{pack_id} inputs.{name}")
+        if capability.inputs[name].is_slots:
+            slots[name] = _slots(raw, graph, f"{pack_id} inputs.{name}")
+        else:
+            inputs[name] = _targets(raw, graph, f"{pack_id} inputs.{name}")
     missing = [name for name in capability.required_inputs if name not in inputs]
     if missing:
         raise WorkflowError(f"{pack_id}: required inputs not bound: {missing}")
@@ -257,7 +323,7 @@ def load_pack(directory: Path) -> WorkflowPack:
         id=pack_id, capability=capability, description=manifest.get("description", ""),
         default=bool(manifest.get("default", False)), graph=graph,
         graph_sha256=hashlib.sha256(graph_bytes).hexdigest(), inputs=inputs, extras=extras,
-        outputs=outputs, directory=directory,
+        outputs=outputs, directory=directory, slots=slots,
     )
 
 
@@ -289,7 +355,8 @@ class WorkflowRegistry:
                     del packs[pack_id]
         return cls(packs, errors)
 
-    def get(self, capability: str, workflow_id: str | None = None) -> WorkflowPack:
+    def get(self, capability: str, workflow_id: str | None = None, needs: tuple[str, ...] = ()) -> WorkflowPack:
+        """The named workflow, or the capability's default among those supporting every input in `needs`."""
         if workflow_id:
             pack = self.packs.get(workflow_id)
             if pack is None:
@@ -298,8 +365,13 @@ class WorkflowRegistry:
                 raise WorkflowError(f"workflow {workflow_id!r} is not available{detail}")
             if pack.capability.name != capability:
                 raise WorkflowError(f"workflow {workflow_id!r} implements {pack.capability.name}, not {capability}")
+            lacking = [name for name in needs if not pack.supports(name)]
+            if lacking:
+                raise WorkflowError(f"workflow {workflow_id!r} does not support {lacking}")
             return pack
-        candidates = sorted((p for p in self.packs.values() if p.capability.name == capability), key=lambda p: p.id)
+        candidates = sorted((p for p in self.packs.values() if p.capability.name == capability
+                             and all(p.supports(name) for name in needs)), key=lambda p: p.id)
         if not candidates:
-            raise WorkflowError(f"no {capability} workflow is available")
+            detail = f" supporting {list(needs)}" if needs else ""
+            raise WorkflowError(f"no {capability} workflow{detail} is available")
         return next((p for p in candidates if p.default), candidates[0])

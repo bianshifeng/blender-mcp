@@ -42,7 +42,7 @@ class FakeComfy:
     async def upload_image(self, path):
         self._check()
         self.uploads.append(Path(path))
-        return "metaori/abc.png"
+        return f"metaori/{Path(path).name}"
 
     async def queue_prompt(self, graph, prompt_id):
         self._check()
