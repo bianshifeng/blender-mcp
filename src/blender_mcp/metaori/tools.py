@@ -70,8 +70,12 @@ def register_tools(mcp: Any, get_blender_connection: Callable[[], Any],
           model sees next to the prompt; say in the prompt how to use them ("the bronze texture of
           image 1", "the shape of image 2"). Giving them picks a workflow that supports references.
         - seed: omit for a random one (recorded). workflow: a workflow id from metaori_status.
-          params: that workflow's extras, e.g. {"steps": 30}, or for t2i_qwen_image_2_1_ref
-          {"lora_1": "Qwen-Image2.1\\style\\x.safetensors", "lora_1_strength": 0.8}.
+          params: that workflow's extras, e.g. {"steps": 30}.
+        - LoRAs: workflow="t2i_qwen_image_2_1_ref" also works without reference_images as plain
+          text-to-image with up to 3 LoRAs, e.g. params={"lora_1": "Qwen-Image2.1\\style\\x.safetensors",
+          "lora_1_strength": 0.8}; the speed LoRA "Qwen-Image2.1\\tool\\p_qwen_image_2.1_8step_v0.1.safetensors"
+          at 1.0 with "steps": 8 is about twice as fast at similar quality. Style LoRAs can break the
+          white-background reference look; check the picture before metaori_generate_model.
         - wait_seconds: wait up to this long (max 600) for the result; 0 returns at once.
 
         Returns the job record; outputs.images lists the PNG paths once status is "succeeded".

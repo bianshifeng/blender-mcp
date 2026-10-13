@@ -56,7 +56,18 @@ Blender 插件无需改动或重装：MetaOri 只通过插件已有的 `execute_
 | `t2i_qwen_image_2_1_ref` | text_to_image | 同一模型，带 6 个参考图槽和 3 个 LoRA 槽；传 `reference_images` 时自动选它。extras：`steps`、`reference_resolution`（参考图缩放边长，0 = 原尺寸）、`lora_1..3`（ComfyUI 列出的 LoRA 文件名）与 `lora_1..3_strength`（默认 0 = 空槽） |
 | `i2m_pixal3d` | image_to_3d（默认） | Pixal3D / TRELLIS.2 图生模型 |
 
-参考图的用法写在提示词里（“图 1 的大象，换成青铜锈色”“图 2 的纹样”）。2026-10-13 实测：不带参考图约 9 s，带 1 张参考图约 11 s，改材质时保留了参考图的造型与纹样。
+参考图的用法写在提示词里（“图 1 的大象，换成青铜锈色”“图 2 的纹样”）。
+
+`t2i_qwen_image_2_1_ref` 不传参考图时就是普通文生图（显式传 `workflow="t2i_qwen_image_2_1_ref"`），所以加上 LoRA 就等于给文生图多了几种“模型”可选。2026-10-13 经 MCP 实测（同一提示词、同一 seed、模型已在显存中）：
+
+| 组合 | params | 耗时 | 效果 |
+|---|---|---|---|
+| 不带参考图、不加 LoRA | `{}` | 5.6 s（25 步） | 与默认工作流同一模型，白底参考图正常 |
+| 8 步加速 LoRA | `{"lora_1": "Qwen-Image2.1\\tool\\p_qwen_image_2.1_8step_v0.1.safetensors", "lora_1_strength": 1.0, "steps": 8}` | 2.6 s | 造型和质感与 25 步接近，适合批量出参考图 |
+| 风格 LoRA mvc5000 | `{"lora_1": "Qwen-Image2.1\\style\\mvc5000_qwen21.safetensors", "lora_1_strength": 1.0}` | — | 画风明显变化（更粗糙的“文物照片”感，边缘有抠图痕迹、背景不纯白）；用作图生模型的参考图前先看图 |
+| 1 张参考图 | `reference_images=[…]` | 约 11 s | 改材质时保留了参考图的造型与纹样 |
+
+LoRA 文件名用 ComfyUI 列出的名字（`Qwen-Image2.1\…`，只有 Qwen Image 2.1 的 LoRA 能用）；切换 LoRA 后第一次运行要多花加载时间。队列里有别的任务或模型要从磁盘换入时，单次会变成 3–4 分钟。
 
 ## 任务目录
 
